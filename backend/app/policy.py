@@ -14,8 +14,7 @@ class PolicyEvaluationResult:
 class RefundPolicyEngine:
     """
     Deterministic refund policy engine.
-    This is the SOLE authority for making refund decisions (APPROVED, DENIED, ESCALATED).
-    The AI model NEVER decides the refund status.
+    This is the sole authority for making refund decisions (APPROVED, DENIED, ESCALATED).
     """
 
     MAX_RETURN_AGE_DAYS = 30

@@ -4,7 +4,8 @@ import DemoScenarios from './components/DemoScenarios';
 import CustomerChat from './components/CustomerChat';
 import AdminDashboard from './components/AdminDashboard';
 import AuditModal from './components/AuditModal';
-import { fetchCustomers, fetchStats, fetchRefunds, reseedDatabase } from './api';
+import { fetchCustomers, fetchStats, fetchRefunds, fetchConfig, reseedDatabase } from './api';
+import { AlertCircle, X, Key } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('customer'); // 'customer' or 'admin'
@@ -17,16 +18,27 @@ export default function App() {
   const [isReseeding, setIsReseeding] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // API Key Config and Toast state
+  const [apiConfig, setApiConfig] = useState({ has_api_key: false, mode: 'fallback_engine' });
+  const [showToast, setShowToast] = useState(false);
+
   const loadData = async () => {
     try {
-      const [custData, statsData, refundData] = await Promise.all([
+      const [custData, statsData, refundData, cfgData] = await Promise.all([
         fetchCustomers(),
         fetchStats(),
         fetchRefunds(statusFilter),
+        fetchConfig().catch(() => ({ has_api_key: false, mode: 'fallback_engine' })),
       ]);
       setCustomers(custData);
       setStats(statsData);
       setRefunds(refundData);
+      if (cfgData) {
+        setApiConfig(cfgData);
+        if (!cfgData.has_api_key) {
+          setShowToast(true);
+        }
+      }
     } catch (err) {
       console.error('Failed to load application data:', err);
     } finally {
@@ -59,19 +71,20 @@ export default function App() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#6366f1', fontFamily: 'sans-serif' }}>
-        <h2>Loading RefundShield AI Engine...</h2>
+        <h2>Loading RefundShield Engine...</h2>
       </div>
     );
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container" style={{ position: 'relative', minHeight: '100vh', paddingBottom: '4rem' }}>
       {/* Top Bar Navigation & Brand */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onReseed={handleReseed}
         isReseeding={isReseeding}
+        apiConfig={apiConfig}
       />
 
       {/* Main Body Content based on Active Tab */}
@@ -84,6 +97,7 @@ export default function App() {
             customers={customers}
             selectedScenario={selectedScenario}
             onRefundSubmitted={loadData}
+            hasApiKey={apiConfig.has_api_key}
           />
         </>
       ) : (
@@ -104,6 +118,26 @@ export default function App() {
           onClose={() => setSelectedRefundForAudit(null)}
           onReviewed={loadData}
         />
+      )}
+
+      {/* Toast Notification when API keys are missing */}
+      {showToast && (
+        <div className="api-toast">
+          <Key size={20} color="#f59e0b" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, marginBottom: '2px', color: '#fbbf24' }}>API Keys Notice</div>
+            <div style={{ fontSize: '0.8125rem', color: '#cbd5e1' }}>
+              Input API ENV keys in <code>.env</code> (<code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code>) in order for live LLM responses to work smoothly. Intelligent local fallback engine is active.
+            </div>
+          </div>
+          <button
+            onClick={() => setShowToast(false)}
+            style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+            title="Dismiss notice"
+          >
+            <X size={16} />
+          </button>
+        </div>
       )}
     </div>
   );

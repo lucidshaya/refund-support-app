@@ -56,6 +56,12 @@ export async function reviewRefund(requestId, action, adminNotes = '') {
   return res.json();
 }
 
+export async function fetchConfig() {
+  const res = await fetch(`${API_BASE}/config`);
+  if (!res.ok) throw new Error('Failed to fetch config');
+  return res.json();
+}
+
 export async function reseedDatabase() {
   const res = await fetch(`${API_BASE}/seed`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to reseed database');

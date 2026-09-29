@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Send, User, Bot, AlertTriangle, ShieldCheck, ChevronDown, ChevronUp, Package, Calendar, Tag, DollarSign, Terminal } from 'lucide-react';
 import { submitRefund } from '../api';
 
-export default function CustomerChat({ customers, selectedScenario, onRefundSubmitted }) {
+export default function CustomerChat({ customers, selectedScenario, onRefundSubmitted, hasApiKey }) {
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -281,6 +281,13 @@ export default function CustomerChat({ customers, selectedScenario, onRefundSubm
         </div>
 
         {/* Input Form */}
+        {!hasApiKey && (
+          <div style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', padding: '0.625rem 0.875rem', marginTop: '0.5rem', fontSize: '0.75rem', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Terminal size={14} style={{ flexShrink: 0 }} />
+            <span>Notice: Input API ENV keys in <code>.env</code> (<code>ANTHROPIC_API_KEY</code> / <code>OPENAI_API_KEY</code>) in order for live LLM responses to work. Local fallback engine is active.</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.875rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
           <input
             type="text"

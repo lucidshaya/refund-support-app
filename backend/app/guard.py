@@ -21,7 +21,7 @@ INJECTION_PATTERNS = [
 class PromptInjectionGuard:
     """
     Regex and heuristic security guard to intercept prompt injection and jailbreak
-    attempts before user inputs are processed by the LLM or policy engine.
+    attempts before user inputs are evaluated.
     """
 
     def __init__(self):

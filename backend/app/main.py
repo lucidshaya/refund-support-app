@@ -52,6 +52,8 @@ app.add_middleware(
 )
 
 
+import os
+
 @app.get("/")
 def read_root():
     return {
@@ -59,6 +61,21 @@ def read_root():
         "status": "online",
         "policy_authority": "deterministic_python_engine",
         "guard_active": True,
+    }
+
+
+@app.get("/api/config")
+def get_config():
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+    has_anthropic = bool(anthropic_key and "your_" not in anthropic_key and len(anthropic_key.strip()) > 5)
+    has_openai = bool(openai_key and "your_" not in openai_key and len(openai_key.strip()) > 5)
+    has_keys = has_anthropic or has_openai
+    return {
+        "has_api_key": has_keys,
+        "has_anthropic": has_anthropic,
+        "has_openai": has_openai,
+        "mode": "live_llm" if has_keys else "fallback_engine"
     }
 
 
@@ -180,7 +197,7 @@ def submit_refund_request(payload: RefundRequestCreate, db: Session = Depends(ge
     db.refresh(refund_req)
 
     # Build response schema object
-    return _build_refund_response(refund_req, customer, order, item)
+    return _build_refund_response(refund_req, customer, order, item, using_fallback=ai_output.get("using_fallback", False))
 
 
 @app.get("/api/refunds", response_model=List[RefundRequestSchema])
@@ -247,7 +264,7 @@ def review_escalated_request(
     return _build_refund_response(req, req.customer, req.order, req.item)
 
 
-def _build_refund_response(req: RefundRequest, customer: Customer, order: Order, item: OrderItem) -> RefundRequestSchema:
+def _build_refund_response(req: RefundRequest, customer: Customer, order: Order, item: OrderItem, using_fallback: bool = False) -> RefundRequestSchema:
     logs = json.loads(req.reasoning_logs) if isinstance(req.reasoning_logs, str) else req.reasoning_logs
     return RefundRequestSchema(
         id=req.id,
@@ -264,6 +281,7 @@ def _build_refund_response(req: RefundRequest, customer: Customer, order: Order,
         ai_sentiment=req.ai_sentiment,
         ai_summary=req.ai_summary,
         ai_suggested_reply=req.ai_suggested_reply,
+        using_fallback=using_fallback,
         reasoning_logs=logs if isinstance(logs, list) else [],
         admin_notes=req.admin_notes,
         created_at=req.created_at,

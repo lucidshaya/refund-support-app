@@ -1,7 +1,9 @@
 import React from 'react';
-import { ShieldCheck, MessageSquare, LayoutDashboard, RefreshCw, Cpu, Lock } from 'lucide-react';
+import { ShieldCheck, MessageSquare, LayoutDashboard, RefreshCw, Cpu, Lock, Key } from 'lucide-react';
 
-export default function Header({ activeTab, setActiveTab, onReseed, isReseeding }) {
+export default function Header({ activeTab, setActiveTab, onReseed, isReseeding, apiConfig }) {
+  const hasKey = apiConfig?.has_api_key;
+
   return (
     <header className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
@@ -52,8 +54,26 @@ export default function Header({ activeTab, setActiveTab, onReseed, isReseeding 
           </button>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls & API Engine Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            padding: '0.375rem 0.75rem',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            background: hasKey ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+            color: hasKey ? '#10b981' : '#f59e0b',
+            border: `1px solid ${hasKey ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
+          }}
+          title={hasKey ? 'Live LLM API keys loaded from .env' : 'Input API ENV keys in .env to enable live LLM responses'}
+          >
+            <Key size={12} />
+            {hasKey ? 'Live LLM Engine' : 'Fallback Engine (No ENV Keys)'}
+          </span>
+
           <button
             onClick={onReseed}
             disabled={isReseeding}

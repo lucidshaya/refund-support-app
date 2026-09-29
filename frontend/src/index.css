@@ -252,3 +252,36 @@ body {
   color: #38bdf8;
   overflow-x: auto;
 }
+
+/* Toast Notification */
+.api-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #f3f4f6;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.6);
+  font-size: 0.875rem;
+  max-width: 480px;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

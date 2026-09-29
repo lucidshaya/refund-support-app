@@ -2,54 +2,57 @@ import os
 import json
 from typing import Dict, Any, Optional
 
-# Attempt to load Anthropic / OpenAI client if keys exist
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+def _get_valid_api_key(env_var: str) -> Optional[str]:
+    key = os.getenv(env_var)
+    if key and "your_" not in key and len(key.strip()) > 5:
+        return key.strip()
+    return None
 
 
 class AIService:
-    """
-    AI Service for classification, intent summary, and customer reply drafting.
-    Important: The AI service does NOT decide the refund outcome (APPROVED/DENIED/ESCALATED).
-    It accepts the policy engine's decision as a ground-truth constraint and drafts
-    an empathetic, clear response.
-    """
-
     def process_refund_request(
         self,
         customer_name: str,
         product_name: str,
         customer_message: str,
         reason_category: str,
-        policy_decision: str,  # APPROVED, DENIED, ESCALATED
+        policy_decision: str,
         policy_explanation: str,
         is_injection: bool = False,
     ) -> Dict[str, Any]:
-        
-        # Check if LLM API is available
-        if ANTHROPIC_API_KEY:
-            try:
-                return self._call_anthropic(
-                    customer_name, product_name, customer_message, reason_category, policy_decision, policy_explanation, is_injection
-                )
-            except Exception as e:
-                print(f"[AI Service] Anthropic call failed, using fallback logic: {e}")
-        
-        if OPENAI_API_KEY:
-            try:
-                return self._call_openai(
-                    customer_name, product_name, customer_message, reason_category, policy_decision, policy_explanation, is_injection
-                )
-            except Exception as e:
-                print(f"[AI Service] OpenAI call failed, using fallback logic: {e}")
+        anthropic_key = _get_valid_api_key("ANTHROPIC_API_KEY")
+        openai_key = _get_valid_api_key("OPENAI_API_KEY")
 
-        # Intelligent local fallback engine
-        return self._fallback_processing(
+        if anthropic_key:
+            try:
+                res = self._call_anthropic(
+                    anthropic_key, customer_name, product_name, customer_message, reason_category, policy_decision, policy_explanation, is_injection
+                )
+                res["using_fallback"] = False
+                return res
+            except Exception as e:
+                print(f"[Service] Anthropic execution error: {e}")
+
+        if openai_key:
+            try:
+                res = self._call_openai(
+                    openai_key, customer_name, product_name, customer_message, reason_category, policy_decision, policy_explanation, is_injection
+                )
+                res["using_fallback"] = False
+                return res
+            except Exception as e:
+                print(f"[Service] OpenAI execution error: {e}")
+
+        res = self._fallback_processing(
             customer_name, product_name, customer_message, reason_category, policy_decision, policy_explanation, is_injection
         )
+        res["using_fallback"] = True
+        return res
 
     def _call_anthropic(
         self,
+        api_key: str,
         customer_name: str,
         product_name: str,
         customer_message: str,
@@ -60,12 +63,12 @@ class AIService:
     ) -> Dict[str, Any]:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        
+        client = anthropic.Anthropic(api_key=api_key)
+
         system_prompt = (
-            "You are an AI customer support assistant for an e-commerce platform. "
+            "You are a customer support assistant for an e-commerce platform. "
             "Your task is to analyze customer messages and draft helpful, polite customer service replies. "
-            "CRITICAL DIRECTIVE: The refund status (APPROVED, DENIED, or ESCALATED) has ALREADY been decided by our deterministic policy engine. "
+            "The refund status (APPROVED, DENIED, or ESCALATED) has ALREADY been decided by our deterministic policy engine. "
             "You MUST NEVER change or contradict this decision. Your reply must explain the outcome clearly and empathetically."
         )
 
@@ -92,16 +95,16 @@ Respond strictly in JSON format with the following keys:
         )
 
         text = response.content[0].text
-        # Parse JSON
         parsed = json.loads(text[text.find("{"):text.rfind("}")+1])
         return {
             "sentiment": parsed.get("sentiment", "neutral"),
             "summary": parsed.get("summary", f"Refund request for {product_name}"),
-            "suggested_reply": parsed.get("reply", self._default_reply(customer_name, policy_decision, policy_explanation)),
+            "suggested_reply": parsed.get("reply", self._default_reply(customer_name, policy_decision, policy_explanation, product_name)),
         }
 
     def _call_openai(
         self,
+        api_key: str,
         customer_name: str,
         product_name: str,
         customer_message: str,
@@ -112,13 +115,13 @@ Respond strictly in JSON format with the following keys:
     ) -> Dict[str, Any]:
         import openai
 
-        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        client = openai.OpenAI(api_key=api_key)
         system_prompt = (
-            "You are an AI customer support assistant. Analyze customer request and draft customer reply. "
+            "You are a customer support assistant. Analyze customer request and draft customer reply. "
             "Do NOT alter the refund decision outcome."
         )
         prompt = f"Customer: {customer_name}, Item: {product_name}, Msg: {customer_message}, Status: {policy_decision}, Reason: {policy_explanation}"
-        
+
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -143,7 +146,6 @@ Respond strictly in JSON format with the following keys:
         policy_explanation: str,
         is_injection: bool,
     ) -> Dict[str, Any]:
-        # Keyword sentiment analysis
         msg_lower = customer_message.lower()
         if is_injection or "override" in msg_lower or "ignore" in msg_lower or "dan mode" in msg_lower:
             sentiment = "suspicious"
@@ -183,7 +185,7 @@ Respond strictly in JSON format with the following keys:
                 f"Reason: {explanation}\n\n"
                 f"We apologize for any inconvenience. Please let us know if you have further questions."
             )
-        else:  # ESCALATED
+        else:
             return (
                 f"Hello {first_name},\n\n"
                 f"Thank you for submitting your request regarding the {product_name}.\n"
@@ -195,3 +197,4 @@ Respond strictly in JSON format with the following keys:
 
 
 ai_service = AIService()
+

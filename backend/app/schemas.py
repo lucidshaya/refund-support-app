@@ -69,6 +69,7 @@ class RefundRequestSchema(BaseModel):
     ai_sentiment: Optional[str] = None
     ai_summary: Optional[str] = None
     ai_suggested_reply: Optional[str] = None
+    using_fallback: Optional[bool] = False
     reasoning_logs: List[str]
     admin_notes: Optional[str] = None
     created_at: datetime
